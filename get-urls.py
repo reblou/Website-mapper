@@ -1,4 +1,4 @@
-#!/usr/bin/include python
+#!/usr/bin/env python
 
 from bs4 import BeautifulSoup
 import urllib2
@@ -7,6 +7,25 @@ import networkx as nx
 import sys
 import re
 import os
+
+visitedURLs = {}
+stack = []
+pages = 0
+
+plt.figure(figsize=(25,25))
+G = nx.Graph()
+
+def extractName(url):
+    matchObj = re.match(r'http[s]*://(.*)\..*$', url)
+    return matchObj.group(1)
+
+try:
+    args = sys.argv
+    url = args[1]
+    website = extractName(url)
+except:
+    print "No arguments, please enter url as an argument"
+    exit()
 
 def findLinks(soup):
     atags = soup.find_all('a', href=True)
@@ -17,99 +36,93 @@ def findLinks(soup):
 
     return links
 
-def addEdges(graph, page, links):
+def addEdges(page, links):
     for link in links:
-        graph.add_edge(page, link)
-    return graph
+        G.add_edge(page, link)
 
-def extractName(url):
-    matchObj = re.match(r'http[s]*://(.*)\..*$', url)
-    return matchObj.group(1)
-
-def addToDictionary(dict, key):
+def addLinks(link):
     try:
-        val = dict[key]
+        visitedURLs[link]
     except:
-        dict[key] = False
-    return dict
+        visitedURLs[link] = False
+        stack.append(link)
 
-def traverseWebsite(graph, url, visited, stack):
-    html_page = urllib2.urlopen(url)
-    soup = BeautifulSoup(html_page, "html5lib")
+def expandUrl(parent, url):
+    matchObj = re.match(r'http[s]*', url)
+    if not matchObj:
+        try:
+            visitedURLs[parent+url]
+        except:
+            return parent + url
+    else:
+        return url
 
-    graph.add_node(url)
+def absUrl(url):
+    matchObj = re.match(r'http[s]*', url)
+    if not matchObj:
+        return False
+    else:
+        return True
 
-    links = findLinks(soup)
+def traverse(url):
+    global pages, stack
+    print "traversing: ", url
+    pages += 1
+    valid = True
 
-    for link in links:
-        visitedURLs = addToDictionary(visitedURLs, link)
+    try:
+        html_page = urllib2.urlopen(url)
+        soup = BeautifulSoup(html_page, "html5lib")
+    except:
+        valid = False
 
-    for key, visited in visitedURLs.items():
-        if not visited:
-            print key
-            stack.append(key)
+    if valid:
+        links = findLinks(soup)
+        for link in links:
+            if absUrl(link):
+                addLinks(url)
 
-    return graph
+        G.add_node(url)
+        G.add_nodes_from(links)
+        addEdges(url, links)
+
+        for link in links:
+            print "- ", link
+
+    try:
+        traverse(stack.pop())
+    except Exception as e:
+        print(e)
+        print "end of stack"
+        return
 
 
-try:
-    args = sys.argv
-    url = args[1]
-    website = extractName(url)
-except:
-    print "No arguments, please enter url as an argument"
-    exit()
-
-
-plt.figure(figsize=(10,10))
-G = nx.Graph()
+traverse(url)
+print "pages: ", pages
+print "values in dict: ", len(visitedURLs)
+"""
 G.add_node(url)
 
 html_page = urllib2.urlopen(url)
 soup = BeautifulSoup(html_page, "html5lib")
 
 
-links = soup.find_all('a')
 xs = findLinks(soup)
-
-visitedURLs = {url: True}
-stack = []
-
 
 for link in xs:
     visitedURLs = addToDictionary(visitedURLs, link)
+    print expandUrl(url, link)
 
 for key, visited in visitedURLs.items():
     if not visited:
-        print key
         stack.append(key)
 
-while stack != []:
-    url = stack.pop()
-    if visitedURLs[url]:
-        continue
-    try:
-        html_page = urllib2.urlopen(url)
-        soup = BeautifulSoup(html_page, "html5lib")
-    except:
-        print "invalid link"
-        visitedURLs[url] = True
-        continue
-
-    links = findLinks(soup)
-
-    visitedURLs[url] = True
-    for link in links:
-        visitedUrls = addToDictionary(visitedURLs, link)
-
-    for key, visited in visitedURLs.items():
-        if not visited:
-            stack.append(key)
 
 
 G.add_nodes_from(xs)
 G = addEdges(G, url, xs)
 
+"""
 plt.subplot(111)
 #plt.show()
 options = {
@@ -119,8 +132,8 @@ options = {
 }
 
 #nx.draw_spectral(G, node_color='black', node_size=100, width=3, with_labels=True, font_color='black')
-nx.draw_spectral(G, node_color='black', node_size=100, width=3)
+#nx.draw_spectral(G, node_color='black', node_size=100, width=3)
 nx.draw(G, node_color='black', node_size=100, width=3)
 
 plt.savefig(website + ".png")
-os.system("feh " + website + ".png")
+#os.system("feh " + website + ".png")
