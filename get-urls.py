@@ -7,12 +7,13 @@ import networkx as nx
 import sys
 import re
 import os
+from collections import deque
 
 visitedURLs = {}
-stack = []
+stack = deque()
 pages = 0
 
-plt.figure(figsize=(25,25))
+plt.figure(figsize=(20,20))
 G = nx.Graph()
 
 def extractName(url):
@@ -21,8 +22,9 @@ def extractName(url):
 
 try:
     args = sys.argv
-    url = args[1]
-    website = extractName(url)
+    rooturl = args[1]
+    website = extractName(rooturl)
+    print "webst: ", website
 except:
     print "No arguments, please enter url as an argument"
     exit()
@@ -32,7 +34,10 @@ def findLinks(soup):
     links = []
 
     for tag in atags:
-        links.append(tag['href'])
+        match = re.match(re.escape(website), tag['href'])
+        if re.search(r"\." + re.escape(website) + r"\.", tag['href'], re.IGNORECASE):
+            print "appending", tag['href']
+            links.append(tag['href'])
 
     return links
 
@@ -42,18 +47,18 @@ def addEdges(page, links):
 
 def addLinks(link):
     try:
-        visitedURLs[link]
+        val = visitedURLs[link]
     except:
         visitedURLs[link] = False
+        print "--added to stack--"
         stack.append(link)
 
 def expandUrl(parent, url):
+    url = re.sub(r'\?.*$', "", url)
     matchObj = re.match(r'http[s]*', url)
+
     if not matchObj:
-        try:
-            visitedURLs[parent+url]
-        except:
-            return parent + url
+        return parent+url
     else:
         return url
 
@@ -67,20 +72,23 @@ def absUrl(url):
 def traverse(url):
     global pages, stack
     print "traversing: ", url
-    pages += 1
     valid = True
 
     try:
         html_page = urllib2.urlopen(url)
         soup = BeautifulSoup(html_page, "html5lib")
+        if (pages > 50):
+            print "First 100 pages"
+            return
+        pages += 1
     except:
         valid = False
 
     if valid:
         links = findLinks(soup)
         for link in links:
-            if absUrl(link):
-                addLinks(url)
+            if link !=  url:
+                addLinks(expandUrl(rooturl, link))
 
         G.add_node(url)
         G.add_nodes_from(links)
@@ -88,43 +96,22 @@ def traverse(url):
 
         for link in links:
             print "- ", link
+    else:
+        print "not valid"
 
     try:
-        traverse(stack.pop())
+        traverse(stack.popleft())
     except Exception as e:
         print(e)
         print "end of stack"
         return
 
 
-traverse(url)
+traverse(rooturl)
 print "pages: ", pages
 print "values in dict: ", len(visitedURLs)
-"""
-G.add_node(url)
 
-html_page = urllib2.urlopen(url)
-soup = BeautifulSoup(html_page, "html5lib")
-
-
-xs = findLinks(soup)
-
-for link in xs:
-    visitedURLs = addToDictionary(visitedURLs, link)
-    print expandUrl(url, link)
-
-for key, visited in visitedURLs.items():
-    if not visited:
-        stack.append(key)
-
-
-
-G.add_nodes_from(xs)
-G = addEdges(G, url, xs)
-
-"""
 plt.subplot(111)
-#plt.show()
 options = {
     'node_color' : 'black',
     'node_size' : '100',
@@ -136,4 +123,4 @@ options = {
 nx.draw(G, node_color='black', node_size=100, width=3)
 
 plt.savefig(website + ".png")
-#os.system("feh " + website + ".png")
+os.system("feh " + website + ".png &")
