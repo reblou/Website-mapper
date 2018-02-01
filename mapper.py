@@ -13,24 +13,17 @@ visitedURLs = {}
 stack = deque()
 pages = 0
 
+
 plt.figure(figsize=(30,30))
 G = nx.Graph()
 
+""" Gets the website name from the url. """
 def extractName(url):
-    #matchObj = re.match(r'http[s]*:\/\/([^.]*)\.(.*)\/.*$', url)
-    matchObj = re.match(r'http[s]*:\/\/((www\.)?([^\/\.]*)).*$', url)
-    return matchObj.group(1)
+    return re.match(r'http[s]*:\/\/((www\.)?([^\/\.]*)).*$', url).group(1)
 
-try:
-    args = sys.argv
-    rooturl = args[1]
-    rooturl = re.sub(r"\/$", "", rooturl)
-    website = extractName(rooturl)
-    print "webst: ", website
-except:
-    print "No arguments, please enter url as an argument"
-    exit()
-
+""" Returns a list with all of the urls linked on the page of the
+corresponding soup object
+"""
 def findLinks(soup):
     atags = soup.find_all('a', href=True)
     links = []
@@ -43,10 +36,12 @@ def findLinks(soup):
 
     return links
 
+""" Adds edges between a list of urls and the current page url. """
 def addEdges(page, links):
     for link in links:
         G.add_edge(page, link)
 
+""" Adds new links to the stack to be traversed later. """
 def addLinks(link):
     try:
         val = visitedURLs[link]
@@ -55,8 +50,13 @@ def addLinks(link):
         print "--added to stack--"
         stack.append(link)
 
+""" Turns a url into suitable input for getting the html.
+    Specifically: removing content after a ? or a #, and expanding
+    relative file paths.
+"""
 def expandUrl(url):
     url = re.sub(r'\?.*$', "", url)
+    url = re.sub(r'#.*$', "", url)
 
     match = re.search(r"http[s]*:\/\/[^\/]*\/[^\/]*\/[^\/]*\/(.*)$", url)
     if match:
@@ -69,6 +69,7 @@ def expandUrl(url):
     else:
         return url
 
+""" Determines whether the url is relative or not. """
 def absUrl(url):
     matchObj = re.match(r'http[s]*', url)
     if not matchObj:
@@ -76,6 +77,7 @@ def absUrl(url):
     else:
         return True
 
+""" Visits a given url and adds all links to the graph."""
 def traverse(url):
     global pages, stack
     print "traversing: ", url
@@ -95,7 +97,6 @@ def traverse(url):
         links = findLinks(soup)
         for link in links:
             if link !=  url:
-                #addLinks(expandUrl(rooturl, link))
                 addLinks(expandUrl(link))
 
         G.add_node(url)
@@ -111,11 +112,28 @@ def traverse(url):
         print "end of stack"
         return
 
+try:
+    args = sys.argv
+    rooturl = args[1]
+    rooturl = re.sub(r"\/$", "", rooturl)
+    website = extractName(rooturl)
+    print "webst: ", website
+except:
+    print "No arguments, please enter url as an argument"
+    exit()
 
 traverse(rooturl)
 print "pages: ", pages
 print "values in dict: ", len(visitedURLs)
 
+print "Writing to file..."
+fp = open(website + ".txt", 'w')
+for key, visited in visitedURLs.items():
+    fp.write(key + "\n")
+
+fp.close()
+
+print "Plotting..."
 plt.subplot(111)
 options = {
     'node_color' : 'black',
@@ -123,8 +141,6 @@ options = {
     'width' : 3
 }
 
-#nx.draw_spectral(G, node_color='black', node_size=100, width=3, with_labels=True, font_color='black')
-#nx.draw_spectral(G, node_color='black', node_size=100, width=3)
 nx.draw(G, node_color='black', node_size=100, width=1)
 
 plt.savefig(website + ".png")
