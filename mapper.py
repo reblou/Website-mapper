@@ -13,16 +13,18 @@ visitedURLs = {}
 stack = deque()
 pages = 0
 
-plt.figure(figsize=(20,20))
+plt.figure(figsize=(30,30))
 G = nx.Graph()
 
 def extractName(url):
-    matchObj = re.match(r'http[s]*://(.*)\..*$', url)
+    #matchObj = re.match(r'http[s]*:\/\/([^.]*)\.(.*)\/.*$', url)
+    matchObj = re.match(r'http[s]*:\/\/((www\.)?([^\/\.]*)).*$', url)
     return matchObj.group(1)
 
 try:
     args = sys.argv
     rooturl = args[1]
+    rooturl = re.sub(r"\/$", "", rooturl)
     website = extractName(rooturl)
     print "webst: ", website
 except:
@@ -35,9 +37,9 @@ def findLinks(soup):
 
     for tag in atags:
         match = re.match(re.escape(website), tag['href'])
-        if re.search(r"\." + re.escape(website) + r"\.", tag['href'], re.IGNORECASE):
+        if re.search(re.escape(website) + r"\.", expandUrl(tag['href']), re.IGNORECASE):
+            links.append(expandUrl(tag['href']))
             print "appending", tag['href']
-            links.append(tag['href'])
 
     return links
 
@@ -53,12 +55,17 @@ def addLinks(link):
         print "--added to stack--"
         stack.append(link)
 
-def expandUrl(parent, url):
+def expandUrl(url):
     url = re.sub(r'\?.*$', "", url)
+
+    match = re.search(r"http[s]*:\/\/[^\/]*\/[^\/]*\/[^\/]*\/(.*)$", url)
+    if match:
+        url = re.sub(re.escape(match.group(1)), "", url)
+
     matchObj = re.match(r'http[s]*', url)
 
     if not matchObj:
-        return parent+url
+        return rooturl+url
     else:
         return url
 
@@ -73,13 +80,13 @@ def traverse(url):
     global pages, stack
     print "traversing: ", url
     valid = True
+    if len(G) > 500:
+        print "too many nodes"
+        return
 
     try:
         html_page = urllib2.urlopen(url)
         soup = BeautifulSoup(html_page, "html5lib")
-        if (pages > 50):
-            print "First 100 pages"
-            return
         pages += 1
     except:
         valid = False
@@ -88,14 +95,12 @@ def traverse(url):
         links = findLinks(soup)
         for link in links:
             if link !=  url:
-                addLinks(expandUrl(rooturl, link))
+                #addLinks(expandUrl(rooturl, link))
+                addLinks(expandUrl(link))
 
         G.add_node(url)
-        G.add_nodes_from(links)
-        addEdges(url, links)
-
-        for link in links:
-            print "- ", link
+        G.add_nodes_from(visitedURLs)
+        addEdges(url, visitedURLs)
     else:
         print "not valid"
 
@@ -120,7 +125,7 @@ options = {
 
 #nx.draw_spectral(G, node_color='black', node_size=100, width=3, with_labels=True, font_color='black')
 #nx.draw_spectral(G, node_color='black', node_size=100, width=3)
-nx.draw(G, node_color='black', node_size=100, width=3)
+nx.draw(G, node_color='black', node_size=100, width=1)
 
 plt.savefig(website + ".png")
 os.system("feh " + website + ".png &")
