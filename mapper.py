@@ -32,7 +32,6 @@ def findLinks(soup):
         match = re.match(re.escape(website), tag['href'])
         if re.search(re.escape(website) + r"\.", expandUrl(tag['href']), re.IGNORECASE):
             links.append(expandUrl(tag['href']))
-            print "appending", tag['href']
 
     return links
 
@@ -47,7 +46,6 @@ def addLinks(link):
         val = visitedURLs[link]
     except:
         visitedURLs[link] = False
-        print "--added to stack--"
         stack.append(link)
 
 """ Turns a url into suitable input for getting the html.
@@ -80,11 +78,13 @@ def absUrl(url):
 """ Visits a given url and adds all links to the graph."""
 def traverse(url):
     global pages, stack
-    print "traversing: ", url
     valid = True
-    if len(G) > 500:
-        print "too many nodes"
+    nds = len(G)
+    if nds > 500:
+        print "Reached node limit"
         return
+    else:
+        print str(nds) + " Nodes"
 
     try:
         html_page = urllib2.urlopen(url)
@@ -102,14 +102,12 @@ def traverse(url):
         G.add_node(url)
         G.add_nodes_from(visitedURLs)
         addEdges(url, visitedURLs)
-    else:
-        print "not valid"
 
     try:
         traverse(stack.popleft())
     except Exception as e:
         print(e)
-        print "end of stack"
+        print "Ended traversing."
         return
 
 try:
@@ -117,14 +115,15 @@ try:
     rooturl = args[1]
     rooturl = re.sub(r"\/$", "", rooturl)
     website = extractName(rooturl)
-    print "webst: ", website
+    print "Website name: ", website
 except:
     print "No arguments, please enter url as an argument"
     exit()
 
+print "Traversing..."
 traverse(rooturl)
-print "pages: ", pages
-print "values in dict: ", len(visitedURLs)
+print "Pages scraped: ", pages
+print "Nodes: ", len(G)
 
 print "Writing to file..."
 fp = open(website + ".txt", 'w')
