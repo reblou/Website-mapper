@@ -10,3 +10,4 @@ It currently uses the Networkx, BeautifulSoup, and matplotlib libraries.
 ![alt text](https://raw.githubusercontent.com/reblou/website-mapper/master/images/shencomix.png)
 ![alt text](https://raw.githubusercontent.com/reblou/website-mapper/master/images/xkcd.png)
 ![alt text](https://raw.githubusercontent.com/reblou/website-mapper/master/images/warwicklaw.png)
+![alt text](https://raw.githubusercontent.com/reblou/website-mapper/master/images/copy.png)

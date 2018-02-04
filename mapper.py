@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+""" A script that creates a sitemap graph of a website given as a command line argument. """
 
 from bs4 import BeautifulSoup
 import urllib2
@@ -12,9 +13,6 @@ from collections import deque
 visitedURLs = {}
 stack = deque()
 pages = 0
-
-
-plt.figure(figsize=(30,30))
 G = nx.Graph()
 
 """ Gets the website name from the url. """
@@ -110,37 +108,39 @@ def traverse(url):
         print "Ended traversing."
         return
 
-try:
-    args = sys.argv
-    rooturl = args[1]
-    rooturl = re.sub(r"\/$", "", rooturl)
-    website = extractName(rooturl)
-    print "Website name: ", website
-except:
-    print "No arguments, please enter url as an argument"
-    exit()
+""" Output all of the urls in visitedURLs to a text file. """
+def writeVisitedLinks(website):
+    fp = open(website + ".txt", 'w')
+    for key, visited in visitedURLs.items():
+        fp.write(key + "\n")
+    fp.close()
 
-print "Traversing..."
-traverse(rooturl)
-print "Pages scraped: ", pages
-print "Nodes: ", len(G)
+""" Plots the Graph. """
+def plotGraph(website):
+    plt.figure(figsize=(30,30))
+    plt.subplot(111)
 
-print "Writing to file..."
-fp = open(website + ".txt", 'w')
-for key, visited in visitedURLs.items():
-    fp.write(key + "\n")
+    nx.draw(G, node_color='black', node_size=100, width=1)
+    plt.savefig(website + ".png")
 
-fp.close()
+if __main__ == "__main__":
+    try:
+        args = sys.argv
+        rooturl = args[1]
+        rooturl = re.sub(r"\/$", "", rooturl)
+        website = extractName(rooturl)
+        print "Website name: ", website
+    except:
+        print "No arguments, please enter a url as an argument"
+        exit()
 
-print "Plotting..."
-plt.subplot(111)
-options = {
-    'node_color' : 'black',
-    'node_size' : '100',
-    'width' : 3
-}
+    print "Traversing..."
+    traverse(rooturl)
+    print "Pages scraped: ", pages
+    print "Nodes: ", len(G)
 
-nx.draw(G, node_color='black', node_size=100, width=1)
+    print "Writing to file..."
+    writeVisitedLinks(website)
 
-plt.savefig(website + ".png")
-os.system("feh " + website + ".png &")
+    print "Plotting..."
+    plotGraph(website)
